@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
+
+:root {
+  /* Brand Colors */
+  --bg-primary: #002b2b;     /* Deep Midnight Teal */
+  --bg-secondary: #003333;   /* Slightly Lighter Teal */
+  --bg-cream: #f9f6ee;       /* Soft Cream for light text on dark bg */
+  
+  --accent-gold: #d4af37;    /* Warm Gold */
+  --accent-gold-hover: #b8962e;
+  --accent-teal: #004d4d;    /* Vibrant Teal for secondary highlights */
+  
+  /* Text & Contrast */
+  --text-primary: #f9f6ee;   /* Cream for high readability on Teal */
+  --text-secondary: #a0baba; /* Muted Teal-Grey for secondary text */
+  --text-dark: #002b2b;      /* For use on light backgrounds */
+  
+  /* Layout & Design */
+  --section-padding: 100px 5%;
+  --border-radius: 12px;
+  --border-subtle: rgba(212, 175, 55, 0.15);
+  
+  /* Typography */
+  --font-heading: 'Playfair Display', serif;
+  --font-body: 'Outfit', sans-serif;
+
+  font-family: var(--font-body);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  margin: 0;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: 0.3s ease;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: var(--font-body);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent-gold);
+  border-radius: 10px;
+}
+
+/* Glassmorphism Utility */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Responsive Container */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
