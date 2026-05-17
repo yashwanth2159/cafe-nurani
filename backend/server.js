@@ -47,10 +47,11 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    origin: [
+        process.env.CLIENT_URL,
+        'http://localhost:5173'
+    ],
+    credentials: true
 }));
 app.use(bodyParser.json());
 
@@ -215,8 +216,9 @@ app.post('/api/admin/login', authLimiter, async (req, res) => {
     // Set JWT as HTTP-only cookie
     res.cookie('adminToken', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: true,
         sameSite: 'none',
+        path: '/',
         maxAge: 2 * 60 * 60 * 1000 // 2 hours
     });
 
