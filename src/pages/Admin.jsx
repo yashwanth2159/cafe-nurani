@@ -30,7 +30,13 @@ function Admin() {
       setIsAccepting(configData.isAcceptingBookings);
 
       const bookingsRes = await fetch(`${API_URL}/bookings`, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          Authorization:
+            `Bearer ${localStorage.getItem(
+              'adminToken'
+            )}`
+        }
       });
 
       if (bookingsRes.status === 401 || bookingsRes.status === 400) {
@@ -56,6 +62,12 @@ function Admin() {
   const handleToggle = async () => {
     try {
       const res = await fetch(`${API_URL}/config/toggle`, {
+        headers: {
+          Authorization:
+            `Bearer ${localStorage.getItem(
+              'adminToken'
+            )}`
+        },
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -73,6 +85,12 @@ function Admin() {
   const handleLogout = async () => {
     try {
       await fetch(`${API_URL}/admin/logout`, {
+        headers: {
+          Authorization:
+            `Bearer ${localStorage.getItem(
+              'adminToken'
+            )}`
+        },
         method: 'POST',
         credentials: 'include'
       });

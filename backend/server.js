@@ -48,10 +48,12 @@ app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(cors({
     origin: [
-        process.env.CLIENT_URL,
+        'https://cafe-nurani.vercel.app',
         'http://localhost:5173'
     ],
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(bodyParser.json());
 
@@ -171,7 +173,8 @@ transporter.verify((error, success) => {
 
 // Authentication Middleware
 const verifyToken = async (req, res, next) => {
-    const token = req.cookies.adminToken;
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split("")[1];
     if (!token) {
         logger.warn(`Unauthorized access attempt to ${req.originalUrl} from ${req.ip}`);
         return res.status(401).json({ success: false, message: "Access denied. Please login." });
@@ -214,15 +217,11 @@ app.post('/api/admin/login', authLimiter, async (req, res) => {
     const token = jwt.sign({ email: admin.email }, JWT_SECRET, { expiresIn: '2h' });
 
     // Set JWT as HTTP-only cookie
-    res.cookie('adminToken', token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none',
-        path: '/',
-        maxAge: 2 * 60 * 60 * 1000 // 2 hours
+    res.json({
+        success: true,
+        token,
+        message: "Login successful"
     });
-
-    res.json({ success: true, message: "Login successful" });
 });
 
 // 1.1 Admin Logout
