@@ -162,7 +162,7 @@ transporter.verify((error, success) => {
     if (error) {
         console.error('❌ Transporter Error:', error.message);
     } else {
-        console.log('✅ Server is ready to take our messages');
+        console.log('Server ready for emails');
     }
 });
 
@@ -467,17 +467,19 @@ app.post('/api/book',
         // Send emails without blocking response
         const sendNotifications = async () => {
             try {
+                console.log("Owner email initiated");
                 await transporter.sendMail(ownerMailOptions);
                 console.log("Owner email sent");
             } catch (err) {
-                console.log("Email failed:", err);
+                console.log("Email error:", err);
                 logger.error(`Owner email failed: ${err.message}`);
             }
             try {
+                console.log("Customer email initiated");
                 await transporter.sendMail(customerMailOptions);
                 console.log("Customer email sent");
             } catch (err) {
-                console.log("Email failed:", err);
+                console.log("Email error:", err);
                 logger.error(`Customer email failed: ${err.message}`);
             }
         };
