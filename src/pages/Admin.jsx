@@ -7,7 +7,7 @@ function Admin() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  
+
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
@@ -20,20 +20,31 @@ function Admin() {
       const configRes = await fetch(`${API_URL}/config`, {
         credentials: 'include'
       });
-      
+
       if (configRes.status === 401 || configRes.status === 400) {
         navigate('/nurani-secure-admin');
         return;
       }
-      
+
       const configData = await configRes.json();
       setIsAccepting(configData.isAcceptingBookings);
 
       const bookingsRes = await fetch(`${API_URL}/bookings`, {
         credentials: 'include'
       });
+
+      if (bookingsRes.status === 401 || bookingsRes.status === 400) {
+        navigate('/nurani-secure-admin');
+        return;
+      }
+
       const bookingsData = await bookingsRes.json();
-      setBookings(bookingsData);
+
+      setBookings(
+        Array.isArray(bookingsData)
+          ? bookingsData
+          : []
+      );
     } catch (err) {
       setError("Failed to connect to server");
       console.error("Fetch error:", err);
@@ -46,7 +57,7 @@ function Admin() {
     try {
       const res = await fetch(`${API_URL}/config/toggle`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
@@ -61,7 +72,7 @@ function Admin() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`${API_URL}/admin/logout`, { 
+      await fetch(`${API_URL}/admin/logout`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -89,12 +100,12 @@ function Admin() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button 
+              <button
                 onClick={handleToggle}
-                style={{ 
-                  background: isAccepting ? 'rgba(255, 68, 68, 0.1)' : 'rgba(0, 200, 81, 0.1)', 
-                  color: isAccepting ? '#ff4444' : '#00C851', 
-                  padding: '10px 20px', 
+                style={{
+                  background: isAccepting ? 'rgba(255, 68, 68, 0.1)' : 'rgba(0, 200, 81, 0.1)',
+                  color: isAccepting ? '#ff4444' : '#00C851',
+                  padding: '10px 20px',
                   borderRadius: '8px',
                   fontWeight: 600,
                   border: `1px solid ${isAccepting ? '#ff4444' : '#00C851'}`,
@@ -103,12 +114,12 @@ function Admin() {
               >
                 {isAccepting ? 'Mark as Full' : 'Open Bookings'}
               </button>
-              <button 
+              <button
                 onClick={handleLogout}
-                style={{ 
-                  background: 'transparent', 
-                  color: 'white', 
-                  padding: '10px 20px', 
+                style={{
+                  background: 'transparent',
+                  color: 'white',
+                  padding: '10px 20px',
                   borderRadius: '8px',
                   fontWeight: 600,
                   border: '1px solid rgba(255,255,255,0.2)',
@@ -148,25 +159,26 @@ function Admin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {bookings.map(booking => (
-                    <tr key={booking.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.3s ease' }} className="table-row-hover">
-                      <td style={{ padding: '20px' }}>
-                        <div style={{ fontWeight: 600 }}>{booking.date}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--accent-gold)' }}>{booking.time}</div>
-                      </td>
-                      <td style={{ padding: '20px' }}>
-                        <div style={{ fontWeight: 600 }}>{booking.name}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{booking.phone}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8 }}>{booking.email}</div>
-                      </td>
-                      <td style={{ padding: '20px' }}>
-                        <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '4px' }}>{booking.guests}</span>
-                      </td>
-                      <td style={{ padding: '20px' }}>
-                        <span style={{ fontSize: '0.9rem' }}>{booking.preference}</span>
-                      </td>
-                    </tr>
-                  ))}
+                  {Array.isArray(bookings) &&
+                    bookings.map((booking) => (
+                      <tr key={booking.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.3s ease' }} className="table-row-hover">
+                        <td style={{ padding: '20px' }}>
+                          <div style={{ fontWeight: 600 }}>{booking.date}</div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--accent-gold)' }}>{booking.time}</div>
+                        </td>
+                        <td style={{ padding: '20px' }}>
+                          <div style={{ fontWeight: 600 }}>{booking.name}</div>
+                          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{booking.phone}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', opacity: 0.8 }}>{booking.email}</div>
+                        </td>
+                        <td style={{ padding: '20px' }}>
+                          <span style={{ background: 'rgba(255,255,255,0.05)', padding: '4px 12px', borderRadius: '4px' }}>{booking.guests}</span>
+                        </td>
+                        <td style={{ padding: '20px' }}>
+                          <span style={{ fontSize: '0.9rem' }}>{booking.preference}</span>
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
