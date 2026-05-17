@@ -150,15 +150,10 @@ const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$
 
 // Nodemailer Setup
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // Use SSL
+    service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS // App Password
-    },
-    tls: {
-        rejectUnauthorized: false // Helps with some network environments
+        pass: process.env.EMAIL_PASS
     }
 });
 
@@ -469,25 +464,22 @@ app.post('/api/book',
         };
 
         // Send emails with retry handling
-        const sendNotifications = async (retryCount = 3) => {
-            for (let i = 0; i < retryCount; i++) {
-                try {
-                    logger.info(`Attempting to send emails (Attempt ${i + 1}/${retryCount}) from: ${process.env.EMAIL_USER}`);
-                    await Promise.all([
-                        transporter.sendMail(ownerMailOptions),
-                        transporter.sendMail(customerMailOptions)
-                    ]);
-                    logger.info('✅ Notifications sent successfully to owner and customer');
-                    return; // Success
-                } catch (err) {
-                    logger.error(`❌ Email Attempt ${i + 1} Failed: ${err.message}`);
-                    if (i === retryCount - 1) {
-                        logger.error('Final email attempt failed. Notification lost.');
-                        throw err; // Re-throw to be caught by the outer handler
-                    }
-                    // Wait before retrying (exponential backoff)
-                    await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
-                }
+        const sendNotifications = async () => {
+            try {
+                await Promise.all([
+                    transporter.sendMail(ownerMailOptions),
+                    transporter.sendMail(customerMailOptions)
+                ]);
+
+                logger.info(
+                    'Notifications sent'
+                );
+
+            } catch (err) {
+
+                logger.error(
+                    `Email failed: ${err.message}`
+                );
             }
         };
 
@@ -495,7 +487,6 @@ app.post('/api/book',
             await sendNotifications();
             res.json({ success: true, message: "Your table is reserved! Confirmation sent to your email ☕" });
         } catch (err) {
-            // Still return success for the booking, but warn about the email
             res.json({ success: true, message: "Table reserved, but email notification failed. Our team will contact you soon." });
         }
     });
