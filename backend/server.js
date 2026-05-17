@@ -195,9 +195,9 @@ app.post('/api/admin/login', authLimiter, async (req, res) => {
     let { email, password } = req.body;
     email = email ? email.trim() : '';
     password = password ? password.trim() : '';
-    
+
     const admin = await Admin.findOne({ email });
-    
+
     if (!admin) {
         logger.warn(`Failed login attempt (email mismatch) for ${email} from ${req.ip}`);
         return res.status(401).json({ success: false, message: "Invalid credentials" });
@@ -215,8 +215,8 @@ app.post('/api/admin/login', authLimiter, async (req, res) => {
     // Set JWT as HTTP-only cookie
     res.cookie('adminToken', token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', 
-        sameSite: 'Strict',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'none',
         maxAge: 2 * 60 * 60 * 1000 // 2 hours
     });
 
@@ -241,7 +241,7 @@ app.post('/api/admin/forgot-password', authLimiter, async (req, res) => {
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
-    
+
     admin.resetTokenHash = resetTokenHash;
     admin.resetTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 mins
     await admin.save();
@@ -282,16 +282,16 @@ app.post('/api/admin/reset-password/:token', authLimiter, async (req, res) => {
 
     if (!password || !passwordRegex.test(password)) {
         logger.warn(`Failed password reset attempt (weak password) from ${req.ip}`);
-        return res.status(400).json({ 
-            success: false, 
-            message: "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character." 
+        return res.status(400).json({
+            success: false,
+            message: "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character."
         });
     }
 
     const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
-    const admin = await Admin.findOne({ 
-        resetTokenHash, 
-        resetTokenExpiry: { $gt: Date.now() } 
+    const admin = await Admin.findOne({
+        resetTokenHash,
+        resetTokenExpiry: { $gt: Date.now() }
     });
 
     if (!admin) {
@@ -320,9 +320,27 @@ app.post('/api/admin/reset-password/:token', authLimiter, async (req, res) => {
 });
 
 // 2. Public Config (for form state)
-app.get('/api/config', (req, res) => {
-    const config = JSON.parse(fs.readFileSync(CONFIG_PATH));
-    res.json({ isAcceptingBookings: config.isAcceptingBookings });
+app.get('/api/config', async (req, res) => {
+    try {
+        let config = await Config.findOne();
+
+        if (!config) {
+            config = await Config.create({
+                isAcceptingBookings: true
+            });
+        }
+
+        res.json({
+            isAcceptingBookings:
+                config.isAcceptingBookings
+        });
+
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            message: "Config load failed"
+        });
+    }
 });
 
 // 3. Admin: Toggle Booking Status (Protected)
@@ -333,7 +351,7 @@ app.post('/api/config/toggle', verifyToken, async (req, res) => {
         if (!config) config = new Config();
         config.isAcceptingBookings = status;
         await config.save();
-        
+
         logger.info(`Booking status toggled to ${status ? 'OPEN' : 'CLOSED'} by admin from ${req.ip}`);
         res.json({ success: true, status: config.isAcceptingBookings });
     } catch (err) {
@@ -352,7 +370,7 @@ app.get('/api/bookings', verifyToken, async (req, res) => {
 });
 
 // 5. Public: Create Booking
-app.post('/api/book', 
+app.post('/api/book',
     bookingLimiter,
     [
         body('name').trim().escape().notEmpty().withMessage('Name is required'),
@@ -363,37 +381,47 @@ app.post('/api/book',
         body('time').trim().escape().notEmpty().withMessage('Time is required')
     ],
     async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ success: false, errors: errors.array() });
-    }
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
 
-    const config = await Config.findOne();
+        const {
+            name,
+            email,
+            phone,
+            guests,
+            date,
+            time,
+            preference
+        } = req.body;
 
-    if (config && !config.isAcceptingBookings) {
-        return res.status(403).json({ success: false, message: "Tables are currently full. Please try again later." });
-    }
+        const config = await Config.findOne();
 
-    const newBooking = new Booking({
-        name,
-        email,
-        phone,
-        guests,
-        date,
-        time,
-        preference
-    });
+        if (config && !config.isAcceptingBookings) {
+            return res.status(403).json({ success: false, message: "Tables are currently full. Please try again later." });
+        }
 
-    await newBooking.save();
+        const newBooking = new Booking({
+            name,
+            email,
+            phone,
+            guests,
+            date,
+            time,
+            preference
+        });
 
-    logger.info(`New booking created by ${name} (${email}) for ${date} at ${time}`);
+        await newBooking.save();
 
-    // 1. Owner Notification Email
-    const ownerMailOptions = {
-        from: process.env.EMAIL_USER,
-        to: process.env.OWNER_EMAIL || 'gangishettiyashwanth@gmail.com',
-        subject: 'New Table Booking – Cafe Nurani',
-        html: `
+        logger.info(`New booking created by ${name} (${email}) for ${date} at ${time}`);
+
+        // 1. Owner Notification Email
+        const ownerMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: process.env.OWNER_EMAIL || 'gangishettiyashwanth@gmail.com',
+            subject: 'New Table Booking – Cafe Nurani',
+            html: `
             <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; border: 1px solid #eee; border-radius: 10px;">
                 <h2 style="color: #008080;">New Table Booking Received</h2>
                 <p><strong>Name:</strong> ${name}</p>
@@ -408,14 +436,14 @@ app.post('/api/book',
                 <p style="font-size: 0.8rem; color: #999;">Received on ${newBooking.timestamp}</p>
             </div>
         `
-    };
+        };
 
-    // 2. Customer Confirmation Email
-    const customerMailOptions = {
-        from: process.env.EMAIL_USER,
-        to: email,
-        subject: 'Your Table is Booked – Cafe Nurani ☕',
-        html: `
+        // 2. Customer Confirmation Email
+        const customerMailOptions = {
+            from: process.env.EMAIL_USER,
+            to: email,
+            subject: 'Your Table is Booked – Cafe Nurani ☕',
+            html: `
             <div style="font-family: Arial, sans-serif; padding: 25px; color: #333; background-color: #fdfdfd; border: 1px solid #ddd; border-radius: 12px; max-width: 600px;">
                 <h2 style="color: #008080; border-bottom: 2px solid #008080; padding-bottom: 10px;">Hello ${name},</h2>
                 <p style="font-size: 1.1rem;">Your table has been successfully reserved at <strong>Cafe Nurani</strong>.</p>
@@ -437,47 +465,47 @@ app.post('/api/book',
                 <p style="font-size: 1.2rem; margin-top: 20px;">See you soon ☕</p>
             </div>
         `
-    };
+        };
 
-    // Send emails with retry handling
-    const sendNotifications = async (retryCount = 3) => {
-        for (let i = 0; i < retryCount; i++) {
-            try {
-                logger.info(`Attempting to send emails (Attempt ${i + 1}/${retryCount}) from: ${process.env.EMAIL_USER}`);
-                await Promise.all([
-                    transporter.sendMail(ownerMailOptions),
-                    transporter.sendMail(customerMailOptions)
-                ]);
-                logger.info('✅ Notifications sent successfully to owner and customer');
-                return; // Success
-            } catch (err) {
-                logger.error(`❌ Email Attempt ${i + 1} Failed: ${err.message}`);
-                if (i === retryCount - 1) {
-                    logger.error('Final email attempt failed. Notification lost.');
-                    throw err; // Re-throw to be caught by the outer handler
+        // Send emails with retry handling
+        const sendNotifications = async (retryCount = 3) => {
+            for (let i = 0; i < retryCount; i++) {
+                try {
+                    logger.info(`Attempting to send emails (Attempt ${i + 1}/${retryCount}) from: ${process.env.EMAIL_USER}`);
+                    await Promise.all([
+                        transporter.sendMail(ownerMailOptions),
+                        transporter.sendMail(customerMailOptions)
+                    ]);
+                    logger.info('✅ Notifications sent successfully to owner and customer');
+                    return; // Success
+                } catch (err) {
+                    logger.error(`❌ Email Attempt ${i + 1} Failed: ${err.message}`);
+                    if (i === retryCount - 1) {
+                        logger.error('Final email attempt failed. Notification lost.');
+                        throw err; // Re-throw to be caught by the outer handler
+                    }
+                    // Wait before retrying (exponential backoff)
+                    await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
                 }
-                // Wait before retrying (exponential backoff)
-                await new Promise(resolve => setTimeout(resolve, 2000 * (i + 1)));
             }
-        }
-    };
+        };
 
-    try {
-        await sendNotifications();
-        res.json({ success: true, message: "Your table is reserved! Confirmation sent to your email ☕" });
-    } catch (err) {
-        // Still return success for the booking, but warn about the email
-        res.json({ success: true, message: "Table reserved, but email notification failed. Our team will contact you soon." });
-    }
-});
+        try {
+            await sendNotifications();
+            res.json({ success: true, message: "Your table is reserved! Confirmation sent to your email ☕" });
+        } catch (err) {
+            // Still return success for the booking, but warn about the email
+            res.json({ success: true, message: "Table reserved, but email notification failed. Our team will contact you soon." });
+        }
+    });
 
 // Centralized Error Handling Middleware
 app.use((err, req, res, next) => {
     logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
-    
+
     const status = err.status || 500;
-    const message = process.env.NODE_ENV === 'production' 
-        ? 'Something went wrong. Please try again later.' 
+    const message = process.env.NODE_ENV === 'production'
+        ? 'Something went wrong. Please try again later.'
         : err.message;
 
     res.status(status).json({
