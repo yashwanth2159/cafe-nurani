@@ -411,6 +411,7 @@ app.post('/api/book',
         await newBooking.save();
 
         logger.info(`New booking created by ${name} (${email}) for ${date} at ${time}`);
+        console.log("Booking saved");
 
         // 1. Owner Notification Email
         const ownerMailOptions = {
@@ -463,32 +464,28 @@ app.post('/api/book',
         `
         };
 
-        // Send emails with retry handling
+        // Send emails without blocking response
         const sendNotifications = async () => {
             try {
-                await Promise.all([
-                    transporter.sendMail(ownerMailOptions),
-                    transporter.sendMail(customerMailOptions)
-                ]);
-
-                logger.info(
-                    'Notifications sent'
-                );
-
+                await transporter.sendMail(ownerMailOptions);
+                console.log("Owner email sent");
             } catch (err) {
-
-                logger.error(
-                    `Email failed: ${err.message}`
-                );
+                console.log("Email failed:", err);
+                logger.error(`Owner email failed: ${err.message}`);
+            }
+            try {
+                await transporter.sendMail(customerMailOptions);
+                console.log("Customer email sent");
+            } catch (err) {
+                console.log("Email failed:", err);
+                logger.error(`Customer email failed: ${err.message}`);
             }
         };
 
-        try {
-            await sendNotifications();
-            res.json({ success: true, message: "Your table is reserved! Confirmation sent to your email ☕" });
-        } catch (err) {
-            res.json({ success: true, message: "Table reserved, but email notification failed. Our team will contact you soon." });
-        }
+        // Fire and forget email notifications (runs in background)
+        sendNotifications();
+
+        res.json({ success: true, message: "Your table is reserved! Confirmation sent to your email ☕" });
     });
 
 // Centralized Error Handling Middleware

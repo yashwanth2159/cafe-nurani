@@ -148,7 +148,7 @@ function Booking() {
 
                 <div style={{ textAlign: 'center', marginTop: '20px' }}>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    Takes less than 30 seconds. Confirmation within minutes.
+                    Takes 1-3 seconds. Instant confirmation.
                   </p>
                 </div>
               </form>
